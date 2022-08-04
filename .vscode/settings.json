@@ -6,5 +6,10 @@
             "pattern": "Documentation.md"
         }
     ],
-    "todo-tree.tree.scanMode": "workspace"
+    "todo-tree.tree.scanMode": "workspace",
+    "cSpell.words": [
+        "Boneh",
+        "Shacham",
+        "Weil"
+    ]
 }

@@ -32,47 +32,32 @@ For higher throughput and better service availability, the ___nodes___ in the AR
 
 The ___grouping___ process is essentially a Distributed Key Generation process (DKG), a "___coordinator___" smart contract is implemented and deployed ad-hoc to coordinate a subset of ___nodes___ through the different phases of the DKG process, then submits the information of the new "___group___" to the "___controller___".
 
-To provide BLS services for all smart-contract-capable Blockchains, an "___adapter___" smart contract is implemented and deployed to each of these Blockchains, these "___adapters___" act as the APIs for other DApp clients to request BLS signatures.
+To provide BLS services for all smart-contract-capable Blockchains, an "___adapter___" smart contract is implemented and deployed to each of these Blockchains, the "___adapter___" acts as the APIs for other DApp clients to request BLS signatures.
 
 The DApp client requests the BLS signature by calling the "___adapter___" APIs, the "___adapter___" assigns the BLS signature task to a specific ___group___, each ___grouped node___ monitors the BLS signature task event emitted by the "___adapter___" and starts a BLS signature task if it belongs to the assigned ___group___ then submits the signature to the "___adapter___" upon completion. The "___adapter___" then returns the results to the caller DApps. There is also a backup mechanism in place if the assigned ___group___ fails to fulfill the request within a reasonable amount of time.
 
-Since the "___adapters___" need the global states (available ___nodes___ and ___groups___) to assign BLS tasks, but first only the "___controller___" has these states, second the "___adapters___" and the "___controller___" are not necessarily on the same Blockchain, thus the registered ___nodes___ need to relay the global states from the "___controller___" to the "___adapters___" so that these states are always in-sync among the network, the "___controller___", and the "___adapters___".
+<!--
+Since the "___adapter___" need the global states (available ___nodes___ and ___groups___) to assign BLS tasks, but first only the "___controller___" has these states, second the "___adapter___" and the "___controller___" are not necessarily on the same Blockchain, thus the registered ___nodes___ need to relay the global states from the "___controller___" to the "___adapter___" so that these states are always in-sync among the network, the "___controller___", and the "___adapter___".
 
-          +---------------------------+           
-          |  Blockchain (Management)  |           
-          +-------------+-------------+           
-          | Controller  | Coordinator |           
-          +-------------+-------------+           
-                                                  
-          +------+  +------+   +------+ -+        
-          | Node |  | Node |   | Node |  |        
-          +------+  +------+   +------+  |        
-          | Node |  | Node |   | Node |  +-- Group
-          +------+  +------+   +------+  |        
-          | Node |  | Node |   | Node |  |        
-          +------+  +------+   +------+ -+        
-                                                  
-          +---------------------------+           
-          |         Adapters          |           
-          +---------------------------+           
-          |  Blockchains (Services)   |           
-          +---------------------------+ 
+The "___adapter___" are also the source of truth to keep track of reward of the BLS tasks, the ARPA network also relays this information to the "___controller___" later used for ___nodes___ to claim their rewards.
+-->
+
+          +------------------------------------+                                           
+          |    Blockchain (Smart Contract)     |                                           
+          +------------+-------------+---------+                                           
+          | Controller | Coordinator | Adapter |                                           
+          +------------+-------------+---------+                                           
+                                                                                           
+          +------+ +------+ +------+ +------+ -+                                           
+          | Node | | Node | | Node | | Node |  |                                           
+          +------+ +------+ +------+ +------+  |                                           
+          | Node | | Node | | Node | | Node |  +-- Group                                   
+          +------+ +------+ +------+ +------+  |                                           
+          | Node | | Node | | Node | | Node |  |                                           
+          +------+ +------+ +------+ +------+ -+                                           
 
 ___Figure A:___ _A high-level architectural view;_
 _Please note that_ ___each group___ _can have_ ___more than 3 nodes.___
-
-#### 1.2.1 Major Components
-
-- Smart Contracts
-  - Controller
-  - Coordinator
-  - Adapter
-- Node
-  - Blockchain Event Listener
-  - Event Queue
-  - State Cache
-  - DKG Module
-  - BLS Module
 
 ## 2. Core
 
@@ -80,27 +65,91 @@ This section describes and defines the fundamental attributes of the ARPA networ
 
 ### 2.1 Network Responsibilities
 
-___Note___: __the scope of the ARPA network includes
-
-The main responsibilities of the ARPA network are:
-
-- __To fulfill__ BLS threshold signature requests
+- __To fulfill__ BLS threshold signature and randomness requests
 - __To manage__ ___nodes___ for joining and exiting the network
-- __To group__ ___nodes___ via the DKG process
-- __To sync__ the network global states between the "___controller___" and the "___adapters___"
+- __To group__ ___nodes___ dynamically via the DKG process
+- __To maintain__ the network global states
 - __To sustain__ the token economics and handle rewards for the participating ___nodes___
 - __To track__ the historical BLS signature tasks
 - __To verify__ any BLS signature task completed by the network
 
 ### 2.2 Network Composition
 
-### 2.3 Network State
+The ARPA network is formed of many ___groups___ of ___nodes___, the ___groups___ are formed dynamically by the DKG process.
 
-### 2.4 Group
+___Nodes___ --> ___Groups___ --> ARPA Network
 
-### 2.5 Node
+The major components of the ARPA network are:
 
-### 2.6 Blockchain
+- ___Node___
+- ___Controller___
+- ___Coordinator___
+- ___Adapter___
+
+Note that the ___group___ is not considered a ARPA network component because it is an ephemeral entity that just consists of many ___nodes___.
+
+#### 2.2.1 Node Composition & Responsibilities
+
+- Blockchain Event Listeners
+  - Listen to new block events
+  - Listen to new DKG task events
+  - Listen to new randomness task
+- Context Cache
+  - Maintain the Blockchain information
+  - Maintain the DKG private key
+  - Maintain the DKG public key
+  - Maintain the networking information
+  - Track the unhandled events
+- DKG Module
+  - Run DKG process
+  - Detect DKG phase
+- BLS Module
+  - Sign partial signature
+  - Verify partial signature
+  - Aggregate partial signatures
+  - Verify signature
+- Committer Module
+  - Commit the BLS signature result
+
+#### 2.2.2 Controller Responsibilities
+
+- Manage network constraints
+  - Node token staking amount (50,000)
+  - Node disqualification penalty amount (1,000)
+  - TODO: COORDINATOR_STATE_TRIGGER_REWARD
+  - Default minimum signature threshold (3)
+  - Default number of committers (3)
+  - Default duration of each DKG phase (10 blocks)
+  - Maximum group capacity (10)
+  - Number of groups in an equilibrium stage
+  - Timeout (100 blocks)
+
+<!--
+TODO: <https://github.com/kafeikui/BLS-TSS-Network/blob/first-commit/crates/randcast-contract-mock/src/contract/controller.rs>
+-->
+#### 2.2.3 Coordinator Responsibilities
+<!--
+TODO: <https://github.com/kafeikui/BLS-TSS-Network/blob/first-commit/crates/randcast-contract-mock/src/contract/coordinator.rs>
+-->
+#### 2.2.4 Adapter Responsibilities
+<!--
+TODO: <https://github.com/kafeikui/BLS-TSS-Network/blob/first-commit/crates/randcast-contract-mock/src/contract/adapter.rs>
+-->
+### 2.3 Network Stages
+
+#### 2.3.1 Bootstrapping Stage
+
+#### 2.3.2 Equilibrium Stage
+
+### 2.4 Network Scaling
+
+#### 2.4.1 Up-scaling
+
+#### 2.4.2 Down-scaling
+
+### 2.N Requests & Tasks
+
+### 2.N Multi-chain Support
 
 ## N. Networking
 
@@ -225,3 +274,6 @@ TODO: define each word
 ### Secure Distributed Key Generation for Discrete-Log Based Crypto-systems
 
 key expiration  
+
+___Components___ are the network-level entities.
+___Modules___ are the node-level entities.
