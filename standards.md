@@ -26,20 +26,20 @@ ARPA BLS Threshold Signature Network (ARPA) is a decentralized (permission-less)
 
 ARPA network relies on a smart-contract-capable Blockchain to manage its dynamic global states. On a high level, these dynamic global states include ___node___ information, ___group___ information, and all BLS signature tasks.
 
-This is achieved by implementing and deploying a single "___controller___" smart contract on a certain Blockchain, each unregistered ___node___ directly interacts with the "___controller___" to register themselves into the ARPA network and then discover the information needed to communicate with other registered ___nodes___.
+This is achieved by implementing and deploying a single "___controller___" smart contract on a particular Blockchain. And each unregistered ___node___ directly interacts with the "___controller___" to register themselves into the ARPA network and discover the information needed to communicate with other registered ___nodes___.
 
 For higher throughput and better service availability, the ___nodes___ in the ARPA network are split into multiple ___groups___ to handle BLS signature tasks in parallel. The "___controller___" is also responsible for initiating the ___grouping___ of the ___nodes___ and storing the ___group___ information.
 
-The ___grouping___ process is essentially a Distributed Key Generation process (DKG), a "___coordinator___" smart contract is implemented and deployed ad-hoc to coordinate a subset of ___nodes___ through the different phases of the DKG process, then submits the information of the new "___group___" to the "___controller___".
+The ___grouping___ process is essentially a Distributed Key Generation process (DKG). A "___coordinator___" smart contract is implemented and deployed ad-hoc to coordinate a subset of ___nodes___ through the different phases of the DKG process, then submits the information of the new "___group___" to the "___controller___".
 
-To provide BLS services for all smart-contract-capable Blockchains, an "___adapter___" smart contract is implemented and deployed to each of these Blockchains, the "___adapter___" acts as the APIs for other DApp clients to request BLS signatures.
+An "___adapter___" smart contract is implemented and deployed to each blockchain to provide BLS services for all smart-contract-capable Blockchains. The "___adapter___" acts as the APIs for other DApp clients to request BLS signatures.
 
-The DApp client requests the BLS signature by calling the "___adapter___" APIs, the "___adapter___" assigns the BLS signature task to a specific ___group___, each ___grouped node___ monitors the BLS signature task event emitted by the "___adapter___" and starts a BLS signature task if it belongs to the assigned ___group___ then submits the signature to the "___adapter___" upon completion. The "___adapter___" then returns the results to the caller DApps. There is also a backup mechanism in place if the assigned ___group___ fails to fulfill the request within a reasonable amount of time.
+The DApp client requests the BLS signature by calling the "___adapter___" APIs. The "___adapter___" assigns the BLS signature task to a specific ___group___. Each ___grouped node___ monitors the BLS signature task event emitted by the "___adapter___" and starts a BLS signature task if it belongs to the assigned ___group___, then submits the signature to the "___adapter___" upon completion. The "___adapter___" then returns the results to the caller DApps. A backup mechanism is also in place if the assigned ___group___ fails to fulfill the request within a reasonable time.
 
 <!--
 Since the "___adapter___" need the global states (available ___nodes___ and ___groups___) to assign BLS tasks, but first only the "___controller___" has these states, second the "___adapter___" and the "___controller___" are not necessarily on the same Blockchain, thus the registered ___nodes___ need to relay the global states from the "___controller___" to the "___adapter___" so that these states are always in-sync among the network, the "___controller___", and the "___adapter___".
 
-The "___adapter___" are also the source of truth to keep track of reward of the BLS tasks, the ARPA network also relays this information to the "___controller___" later used for ___nodes___ to claim their rewards.
+The "___adapter___" is also the source of truth to keep track of the reward of the BLS tasks. The ARPA network also relays this information to the "___controller___" later used for ___nodes___ to claim their rewards.
 -->
 
           +------------------------------------+                                           
@@ -57,7 +57,7 @@ The "___adapter___" are also the source of truth to keep track of reward of the 
           +------+ +------+ +------+ +------+ -+                                           
 
 ___Figure A:___ _A high-level architectural view;_
-_Please note that_ ___each group___ _can have_ ___more than 3 nodes.___
+_Please note that_ ___each group___ _can have more than three_ ___nodes___.
 
 ## 2. Core
 
@@ -68,14 +68,14 @@ This section describes and defines the fundamental attributes of the ARPA networ
 - __To fulfill__ BLS threshold signature and randomness requests
 - __To manage__ ___nodes___ for joining and exiting the network
 - __To group__ ___nodes___ dynamically via the DKG process
-- __To maintain__ the network global states
+- __To maintain__ the global network states
 - __To sustain__ the token economics and handle rewards for the participating ___nodes___
 - __To track__ the historical BLS signature tasks
 - __To verify__ any BLS signature task completed by the network
 
 ### 2.2 Network Composition
 
-The ARPA network is formed of many ___groups___ of ___nodes___, the ___groups___ are formed dynamically by the DKG process.
+The ARPA network consists of many ___groups___ of ___nodes___, and the ___groups___ are formed dynamically by the DKG process.
 
 ___Nodes___ --> ___Groups___ --> ARPA Network
 
@@ -86,14 +86,14 @@ The major components of the ARPA network are:
 - ___Coordinator___
 - ___Adapter___
 
-Note that the ___group___ is not considered a ARPA network component because it is an ephemeral entity that just consists of many ___nodes___.
+Note that we do not consider the ___group___ an ARPA network component because it is a transient entity consisting of many ___nodes___.
 
 #### 2.2.1 Node Composition & Responsibilities
 
 - Blockchain Event Listeners
   - Listen to new block events
-  - Listen to new DKG task events
-  - Listen to new randomness task
+  - Listen to recent DKG task events
+  - Listen to new randomness task events
 - Context Cache
   - Maintain the Blockchain information
   - Maintain the DKG private key
@@ -113,25 +113,50 @@ Note that the ___group___ is not considered a ARPA network component because it 
 
 #### 2.2.2 Controller Responsibilities
 
-- Manage network constraints
-  - Node token staking amount (50,000)
-  - Node disqualification penalty amount (1,000)
-  - TODO: COORDINATOR_STATE_TRIGGER_REWARD
-  - Default minimum signature threshold (3)
-  - Default number of committers (3)
-  - Default duration of each DKG phase (10 blocks)
-  - Maximum group capacity (10)
+- Manage network parameters & constraints
+  - Node token staking amount (50,000 ARPA)
+  - Node disqualification penalty amount (1,000 ARPA)
+  - DKG post-process reward amount (100 ARPA)
+  - Minimum signature threshold (3)
+  - Number of committers (3)
+  - Duration of each DKG phase (10 blocks)
+  - Maximum group capacity (10 nodes)
   - Number of groups in an equilibrium stage
-  - Timeout (100 blocks)
-
+  - Exit cool-down period (100 blocks)
+- Emit DKG task events
+- Handle ___node___ registrations
+- Handle ___node___ activations
+- Handle ___node___ exits
+- Receive DKG result commits
+- Handle DKG post processes
+- Handle unresponsive-group reports
 <!--
 TODO: <https://github.com/kafeikui/BLS-TSS-Network/blob/first-commit/crates/randcast-contract-mock/src/contract/controller.rs>
 -->
 #### 2.2.3 Coordinator Responsibilities
+
+- Manage phases in each particular DKG process
+- Manage DKG shares
+- Manage DKG responses
+- Manage DKG justifications
+
 <!--
 TODO: <https://github.com/kafeikui/BLS-TSS-Network/blob/first-commit/crates/randcast-contract-mock/src/contract/coordinator.rs>
 -->
 #### 2.2.4 Adapter Responsibilities
+
+- Manage network parameters & constraints
+  - BLS signature task reward (50 ARPA)
+  - BLS signature commit reward (100 ARPA)
+  - BLS signature incorrect commit penalty (1,000 ARPA)
+  - BLS signature result challenge reward (300)
+  - BLS signature task time window (30 blocks)
+  - BLS signature failure limit (3)
+- Emit BLS signature task events
+- Handle reward claims
+- Handle randomness requests
+- Fulfill randomness requests
+
 <!--
 TODO: <https://github.com/kafeikui/BLS-TSS-Network/blob/first-commit/crates/randcast-contract-mock/src/contract/adapter.rs>
 -->

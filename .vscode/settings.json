@@ -4,11 +4,17 @@
             "language": "markdown",
             "scheme": "file",
             "pattern": "Documentation.md"
+        },
+        {
+            "language": "markdown",
+            "scheme": "file"
         }
     ],
     "todo-tree.tree.scanMode": "workspace",
     "cSpell.words": [
+        "ARPA",
         "Boneh",
+        "Discoverability",
         "Shacham",
         "Weil"
     ]
